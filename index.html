@@ -3,314 +3,142 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>AR Marker Detection</title>
+    <title>Hello World</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsartoolkit5/5.15.13/jsartoolkit5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three-ar-js/3.4.5/ar.js"></script>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-        }
-        
-        #info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            background: rgba(0,0,0,0.7);
-            padding: 15px;
-            border-radius: 8px;
-            z-index: 100;
-            max-width: 300px;
-        }
-        
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 100;
-        }
-        
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 0 5px;
-        }
-        
-        button:hover {
-            background: #0056b3;
-        }
-        
-        button:disabled {
-            background: #666;
-            cursor: not-allowed;
-        }
-        
-        .marker-found {
-            background: rgba(0,255,0,0.2) !important;
-        }
-    </style>
 </head>
-<body>
-    <div id="info">
-        <h3>AR Marker Detection</h3>
-        <p>Point your camera at a Hiro marker to see the 3D cube and hear audio.</p>
-        <div id="status">Initializing...</div>
-    </div>
-    
-    <div id="controls">
-        <button id="toggleAudio">🔊 Toggle Audio</button>
-        <button id="resetTracking">🔄 Reset Tracking</button>
-    </div>
+<body style='margin : 0px; overflow: hidden; font-family: Monospace;'>
 
-    <script>
-        let scene, camera, renderer, arToolkitSource, arToolkitContext;
-        let markerRoot, cube, audio, audioContext;
-        let isMarkerVisible = false;
-        let rotationSpeed = 0.01;
-        
-        // Audio setup
-        function initAudio() {
-            try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                audio = new Audio();
-                audio.crossOrigin = "anonymous";
-                audio.loop = true;
-                audio.volume = 0.5;
-                
-                // Create a simple tone using Web Audio API as fallback
-                createTone();
-                
-                document.getElementById('status').textContent = 'Audio initialized';
-            } catch (e) {
-                console.log('Audio initialization failed:', e);
-                document.getElementById('status').textContent = 'Audio not available';
-            }
-        }
-        
-        function createTone() {
-            if (!audioContext) return;
-            
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A note
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-            
-            window.playTone = () => {
-                if (audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                gainNode.gain.setTargetAtTime(0.1, audioContext.currentTime, 0.1);
-            };
-            
-            window.stopTone = () => {
-                gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
-            };
-            
-            oscillator.start();
-        }
-        
-        function init() {
-            // Scene setup
-            scene = new THREE.Scene();
-            
-            // Camera setup
-            camera = new THREE.Camera();
-            scene.add(camera);
-            
-            // Renderer setup
-            renderer = new THREE.WebGLRenderer({
-                antialias: true,
-                alpha: true
-            });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setClearColor(new THREE.Color('lightgrey'), 0);
-            renderer.domElement.style.position = 'absolute';
-            renderer.domElement.style.top = '0px';
-            renderer.domElement.style.left = '0px';
-            document.body.appendChild(renderer.domElement);
-            
-            // AR.js source (webcam)
-            arToolkitSource = new THREEx.ArToolkitSource({
-                sourceType: 'webcam'
-            });
-            
-            arToolkitSource.init(() => {
-                document.getElementById('status').textContent = 'Camera ready - Look for Hiro marker';
-                onResize();
-            });
-            
-            // Handle resize
-            window.addEventListener('resize', onResize);
-            
-            // AR.js context
-            arToolkitContext = new THREEx.ArToolkitContext({
-                cameraParametersUrl: 'https://cdnjs.cloudflare.com/ajax/libs/three-ar-js/3.4.5/data/camera_para.dat',
-                detectionMode: 'mono'
-            });
-            
-            arToolkitContext.init(() => {
-                camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
-            });
-            
-            // Marker setup (using Hiro marker)
-            markerRoot = new THREE.Group();
-            scene.add(markerRoot);
-            
-            let markerControls = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
-                type: 'pattern',
-                patternUrl: 'https://cdnjs.cloudflare.com/ajax/libs/three-ar-js/3.4.5/data/patt.hiro'
-            });
-            
-            // Create 3D cube
-            createCube();
-            
-            // Initialize audio
-            initAudio();
-            
-            // Event listeners
-            setupEventListeners();
-            
-            // Start render loop
-            animate();
-        }
-        
-        function createCube() {
-            // Geometry and material
-            const geometry = new THREE.BoxGeometry(1, 1, 1);
-            const materials = [
-                new THREE.MeshBasicMaterial({ color: 0xff0000 }), // Right - Red
-                new THREE.MeshBasicMaterial({ color: 0x00ff00 }), // Left - Green
-                new THREE.MeshBasicMaterial({ color: 0x0000ff }), // Top - Blue
-                new THREE.MeshBasicMaterial({ color: 0xffff00 }), // Bottom - Yellow
-                new THREE.MeshBasicMaterial({ color: 0xff00ff }), // Front - Magenta
-                new THREE.MeshBasicMaterial({ color: 0x00ffff })  // Back - Cyan
-            ];
-            
-            cube = new THREE.Mesh(geometry, materials);
-            cube.position.set(0, 0.5, 0);
-            
-            // Add wireframe overlay
-            const wireframe = new THREE.WireframeGeometry(geometry);
-            const line = new THREE.LineSegments(wireframe, new THREE.LineBasicMaterial({ color: 0x000000 }));
-            line.position.copy(cube.position);
-            
-            markerRoot.add(cube);
-            markerRoot.add(line);
-            
-            // Add ambient lighting
-            const light = new THREE.AmbientLight(0xffffff, 0.8);
-            markerRoot.add(light);
-            
-            // Add directional light
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-            directionalLight.position.set(1, 1, 1);
-            markerRoot.add(directionalLight);
-        }
-        
-        function setupEventListeners() {
-            // Toggle audio button
-            document.getElementById('toggleAudio').addEventListener('click', () => {
-                if (audioContext && audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                
-                if (window.playTone && !isMarkerVisible) {
-                    window.playTone();
-                } else if (window.stopTone) {
-                    window.stopTone();
-                }
-            });
-            
-            // Reset tracking button
-            document.getElementById('resetTracking').addEventListener('click', () => {
-                if (arToolkitContext) {
-                    arToolkitContext.arController.canvas.width = arToolkitSource.domElement.videoWidth;
-                    arToolkitContext.arController.canvas.height = arToolkitSource.domElement.videoHeight;
-                    document.getElementById('status').textContent = 'Tracking reset - Look for Hiro marker';
-                }
-            });
-            
-            // User interaction to start audio context
-            document.addEventListener('click', () => {
-                if (audioContext && audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-            }, { once: true });
-        }
-        
-        function onResize() {
-            arToolkitSource.onResize();
-            arToolkitSource.copySizeTo(renderer.domElement);
-            if (arToolkitContext.arController !== null) {
-                arToolkitSource.copySizeTo(arToolkitContext.arController.canvas);
-            }
-        }
-        
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            if (arToolkitSource && arToolkitSource.ready !== false) {
-                arToolkitContext.update(arToolkitSource.domElement);
-            }
-            
-            // Check if marker is visible
-            const wasVisible = isMarkerVisible;
-            isMarkerVisible = markerRoot.visible;
-            
-            // Handle marker visibility changes
-            if (isMarkerVisible && !wasVisible) {
-                document.getElementById('status').textContent = 'Marker detected! 🎯';
-                document.getElementById('info').classList.add('marker-found');
-                
-                // Play audio when marker is found
-                if (window.playTone) {
-                    window.playTone();
-                }
-            } else if (!isMarkerVisible && wasVisible) {
-                document.getElementById('status').textContent = 'Look for Hiro marker';
-                document.getElementById('info').classList.remove('marker-found');
-                
-                // Stop audio when marker is lost
-                if (window.stopTone) {
-                    window.stopTone();
-                }
-            }
-            
-            // Animate cube rotation when visible
-            if (isMarkerVisible && cube) {
-                cube.rotation.x += rotationSpeed;
-                cube.rotation.y += rotationSpeed * 1.5;
-                cube.rotation.z += rotationSpeed * 0.5;
-            }
-            
-            renderer.render(scene, camera);
-        }
-        
-        // Initialize when page loads
-        window.addEventListener('load', init);
-        
-        // Handle page visibility changes
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && window.stopTone) {
-                window.stopTone();
-            }
-        });
+    <!-- 
+      Example created by Lee Stemkoski: https://github.com/stemkoski
+    -->
+    
+    <!-- ---------------- Custom Shader Code ------------------------ -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+    uniform float time;
+    varying vec2 textureUV;
+    void main() 
+    { 
+        textureUV = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+    }
     </script>
-</body>
-</html>
+    
+    <script id="fragmentShader" type="x-shader/x-vertex"> 
+    uniform float time;
+    uniform sampler2D baseTexture;
+    varying vec2 textureUV;
+    void main() 
+    {
+        gl_FragColor = texture2D( baseTexture, textureUV );
+    }  
+    </script>
+    <!-- ----------------------------------------------------------- -->
+    
+    <script>
+    
+    var scene, camera, renderer, clock, deltaTime, totalTime;
+    
+    var mesh, shaderMaterial;
+    
+    initialize();
+    animate();
+    
+    function initialize()
+    {
+        scene = new THREE.Scene();
+                    
+        camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 1000 );
+        camera.position.set(0, 2, 4);
+        camera.lookAt( scene.position );	
+        scene.add( camera );
+    
+        let ambientLight = new THREE.AmbientLight( 0xcccccc, 1.00 );
+        scene.add( ambientLight );
+        
+        // let pointLight = new THREE.PointLight();
+        // camera.add( pointLight );
+        
+        renderer = new THREE.WebGLRenderer({
+            antialias : true,
+            alpha: false
+        });
+        renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        renderer.domElement.style.position = 'absolute'
+        renderer.domElement.style.top  = '0px'
+        renderer.domElement.style.left = '0px'
+        document.body.appendChild( renderer.domElement );
+        window.addEventListener( 'resize', onWindowResize, false );
+    
+        clock = new THREE.Clock();
+        deltaTime = 0;
+        totalTime = 0;
+        
+        let geometry = new THREE.BoxGeometry(1,1,1);
+        
+        let loader = new THREE.TextureLoader();
+        let texture = loader.load( 'images/color-grid.png', render );
+        
+        /*
+        // Basic, unlit material
+        let basicMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x0000ff,
+            wireframe: false,
+        });
+        */
+        
+        // Basic, lit material
+        let material = new THREE.MeshLambertMaterial({ 
+            map: texture
+        });
+        
+        /*
+        // Shader-based material
+        let shaderMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 1.0 },
+                baseTexture: { value: texture }
+            },
+            vertexShader: document.getElementById( 'vertexShader' ).textContent,
+            fragmentShader: document.getElementById( 'fragmentShader' ).textContent
+        });
+        */
+        
+        mesh = new THREE.Mesh( geometry, material );
+        
+        scene.add( mesh );
+    }
+    
+    function update()
+    {
+        mesh.rotation.y += 0.01;
+        // shaderMaterial.uniforms.time.value += deltaTime;
+    }
+    
+    function render()
+    {
+        renderer.render( scene, camera );
+    }
+    
+    function animate()
+    {
+        requestAnimationFrame(animate);
+        deltaTime = clock.getDelta();
+        totalTime += deltaTime;
+        update();
+        render();
+    }
+    
+    function onWindowResize() 
+    {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize( window.innerWidth, window.innerHeight );
+    }
+    
+    </script>
+    
+    </body>
+    </html>
