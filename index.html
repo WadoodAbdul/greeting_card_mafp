@@ -6,15 +6,36 @@
   <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@v7.6.0/dist/aframe-extras.min.js"></script>
   <body style="margin : 0px; overflow: hidden;">
     <a-scene embedded arjs>
+      <a-assets>
+        <!-- <a-asset-item id="myModel" src="./path/to/your/model.glb"></a-asset-item> -->
+        <audio id="avatarAudio" src="audio/analogy_story.mp3" preload="auto"></audio>
+      </a-assets>
       <a-marker preset="hiro">
         <a-entity
+          id = 'avatar'
           position="0 0 0"
           scale="1 1 1"
           gltf-model="models/animated_jump.glb"
           animation-mixer="clip: *; loop: repeat"
+          sound="src: #avatarAudio; autoplay: false; loop: true; volume: 0.7"
         ></a-entity>
       </a-marker>
       <a-entity camera></a-entity>
     </a-scene>
+    <script>
+      // Audio control when marker is detected/lost
+      const marker = document.querySelector('a-marker');
+      const avatar = document.querySelector('#avatar');
+      
+      marker.addEventListener('markerFound', function() {
+        console.log('Marker found - starting audio');
+        avatar.components.sound.playSound();
+      });
+      
+      marker.addEventListener('markerLost', function() {
+        console.log('Marker lost - pausing audio');
+        avatar.components.sound.pauseSound();
+      });
+    </script>
   </body>
 </html>
