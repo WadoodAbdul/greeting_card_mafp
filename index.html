@@ -8,14 +8,14 @@
     <a-scene embedded arjs>
       <a-assets>
         <!-- <a-asset-item id="myModel" src="./path/to/your/model.glb"></a-asset-item> -->
-        <audio id="avatarAudio" src="audio/analogy_story.mp3" preload="auto"></audio>
+        <audio id="avatarAudio" src="audio/full_transcript_wo_emotions.mp3" preload="auto"></audio>
       </a-assets>
       <a-marker preset="hiro">
         <a-entity
           id = 'avatar'
           position="0 0 0"
           scale="1 1 1"
-          gltf-model="models/avatar.glb"
+          gltf-model="models/rain_w_init_lip_sync.glb"
           animation-mixer="clip: *; loop: repeat"
           sound="src: #avatarAudio; autoplay: false; loop: true; volume: 0.7"
         ></a-entity>
