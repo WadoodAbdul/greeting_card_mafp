@@ -1,183 +1,52 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AR Greeting Card</title>
-  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-  <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/master/aframe/build/aframe-ar.min.js"></script>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-    }
-    
-    #startPage {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      font-family: Arial, sans-serif;
-    }
-    
-    .start-container {
-      text-align: center;
-      color: white;
-      padding: 40px;
-      max-width: 500px;
-    }
-    
-    #startPage h1 {
-      font-size: 36px;
-      margin-bottom: 20px;
-      font-weight: bold;
-    }
-    
-    #startPage p {
-      font-size: 18px;
-      margin-bottom: 30px;
-      line-height: 1.6;
-    }
-    
-    #startButton {
-      padding: 20px 40px;
-      font-size: 20px;
-      background: white;
-      color: #667eea;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-      transition: transform 0.2s, box-shadow 0.2s;
-      font-weight: bold;
-    }
-    
-    #startButton:hover {
-      transform: scale(1.05);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-    }
-    
-    #startButton:active {
-      transform: scale(0.98);
-    }
-  </style>
-</head>
-<body>
-  <!-- Start Page Overlay -->
-  <div id="startPage">
-    <div class="start-container">
-      <h1>🎉 AR Greeting Card</h1>
-      <p>Get ready for an augmented reality experience! Point your camera at the marker to reveal your special message.</p>
-      <button id="startButton">Start AR Experience</button>
-    </div>
-  </div>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <!-- we import arjs version without NFT but with marker + location based support -->
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@v7.6.0/dist/aframe-extras.min.js"></script>
+  <body style="margin : 0px; overflow: hidden;">
+    <a-scene embedded arjs>
+      <a-assets>
+        <!-- <a-asset-item id="myModel" src="./path/to/your/model.glb"></a-asset-item> -->
+        <audio id="avatarAudio" src="audio/diologues_w_emotions.mp3" preload="auto"></audio>
+      </a-assets>
+      <a-marker type="pattern" url="data/pattern-link_qr.patt">
+        <a-entity
+          id = 'avatar'
+          position="0 0 0"
+          scale="0.5 0.5 0.5"
+          gltf-model="models/idle_animated_aida.glb"
+          animation-mixer="clip: *; loop: repeat"
+          sound="src: #avatarAudio; autoplay: false; loop: false; volume: 0.7"
+        ></a-entity>
+      </a-marker>
+      <a-entity camera></a-entity>
+    </a-scene>
+    <script>
+    const marker = document.querySelector('a-marker');
+    const avatar = document.querySelector('#avatar');
+    const audioEl = document.querySelector('#avatarAudio');
+    const startBtn = document.querySelector('#startBtn');
 
-  <!-- AR Scene -->
-  <a-scene 
-    embedded 
-    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; patternRatio: 0.75;"
-    vr-mode-ui="enabled: false"
-    id="arScene">
-    <a-assets>
-      <audio id="avatarAudio" src="audio/diologues_w_emotions.mp3" preload="auto"></audio>
-    </a-assets>
-    <a-marker 
-      type="pattern" 
-      url="data/pattern-link_qr.patt" 
-      emitevents="true"
-      smooth="true"
-      smoothCount="5"
-      smoothTolerance="0.01"
-      smoothThreshold="2">
-      <a-entity
-        id="avatar"
-        position="0 0 0"
-        scale="0.5 0.5 0.5"
-        gltf-model="models/idle_animated_aida.glb"
-        animation-mixer="clip: *; loop: repeat"
-        sound="src: #avatarAudio; autoplay: false; loop: false; volume: 0.7"
-      ></a-entity>
-    </a-marker>
-    <a-entity camera></a-entity>
-  </a-scene>
-
-  <script>
-    // Handle start button click
-    document.getElementById('startButton').addEventListener('click', function() {
-      console.log('Start button clicked');
-      
-      // Play audio immediately on click for iOS compatibility
-      const audio = document.querySelector('#avatarAudio');
-      console.log('Audio element found:', audio);
-      
-      if (audio) {
-        audio.play().then(() => {
-          console.log('Audio started playing on button click');
-        }).catch(e => {
-          console.log('Audio play error:', e);
-        });
-      }
-      
-      // Hide start page
-      document.getElementById('startPage').style.display = 'none';
-      console.log('Start page hidden, AR scene visible');
+    // ✅ Unlock audio on iOS with a user gesture
+    startBtn.addEventListener('click', () => {
+      audioEl.play().then(() => {
+        audioEl.pause(); // immediately pause, just to unlock
+        console.log("Audio unlocked for iOS");
+      }).catch(e => console.warn("Audio unlock failed:", e));
+      startBtn.style.display = "none"; // hide button after enabling
     });
 
-    // Wait for A-Frame scene to load
-    const scene = document.querySelector('a-scene');
-    
-    if (scene.hasLoaded) {
-      setupMarkerEvents();
-    } else {
-      scene.addEventListener('loaded', setupMarkerEvents);
-    }
-    
-    function setupMarkerEvents() {
-      console.log('A-Frame scene loaded, setting up marker events');
-      
-      const marker = document.querySelector('a-marker');
-      const avatar = document.querySelector('#avatar');
-      
-      if (!marker) {
-        console.error('Marker not found');
-        return;
-      }
-      
-      if (!avatar) {
-        console.error('Avatar entity not found');
-        return;
-      }
+    // Marker events
+    marker.addEventListener('markerFound', () => {
+      console.log('Marker found - starting audio');
+      avatar.components.sound.playSound();
+    });
 
-      // Play audio when marker is found
-      marker.addEventListener('markerFound', function() {
-        console.log('Marker found - avatar visible');
-        
-        // Audio should already be playing from button click
-        // Just ensure it's playing if it somehow stopped
-        const audio = document.querySelector('#avatarAudio');
-        if (audio && audio.paused) {
-          audio.play().catch(e => console.log('Resume audio error:', e));
-        }
-      });
-
-      // Pause audio when marker is lost
-      marker.addEventListener('markerLost', function() {
-        console.log('Marker lost - pausing audio');
-        
-        const audio = document.querySelector('#avatarAudio');
-        if (audio) {
-          audio.pause();
-        }
-      });
-      
-      console.log('Marker event listeners attached successfully');
-    }
-  </script>
-</body>
+    marker.addEventListener('markerLost', () => {
+      console.log('Marker lost - pausing audio');
+      avatar.components.sound.pauseSound();
+    });
+    </script>
+  </body>
 </html>
