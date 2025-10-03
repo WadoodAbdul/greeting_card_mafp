@@ -23,30 +23,45 @@
       <a-entity camera></a-entity>
     </a-scene>
     <script>
-    const marker = document.querySelector('a-marker');
-    const avatar = document.querySelector('#avatar');
-    const audioEl = document.querySelector('#avatarAudio');
-    const startBtn = document.querySelector('#startBtn');
+  const marker = document.querySelector('a-marker');
+  const avatar = document.querySelector('#avatar');
+  const audioEl = document.querySelector('#avatarAudio');
 
-    // ✅ Unlock audio on iOS with a user gesture
-    startBtn.addEventListener('click', () => {
-      audioEl.play().then(() => {
-        audioEl.pause(); // immediately pause, just to unlock
-        console.log("Audio unlocked for iOS");
-      }).catch(e => console.warn("Audio unlock failed:", e));
-      startBtn.style.display = "none"; // hide button after enabling
-    });
+  // Get the A-Frame sound system (which wraps AudioContext)
+  const sceneEl = document.querySelector('a-scene');
 
-    // Marker events
-    marker.addEventListener('markerFound', () => {
-      console.log('Marker found - starting audio');
-      avatar.components.sound.playSound();
-    });
+  // ✅ Unlock audio context on first user gesture
+  function unlockAudio() {
+    const audioCtx = sceneEl.audioListener.context; // A-Frame exposes the AudioContext here
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().then(() => {
+        console.log("AudioContext resumed");
+      });
+    }
 
-    marker.addEventListener('markerLost', () => {
-      console.log('Marker lost - pausing audio');
-      avatar.components.sound.pauseSound();
-    });
+    // Also unlock the HTML audio element (Safari needs this too)
+    audioEl.play().then(() => {
+      audioEl.pause();
+      console.log("HTMLAudio element unlocked");
+    }).catch(e => console.warn("Unlock failed:", e));
+
+    document.body.removeEventListener("touchend", unlockAudio);
+    document.body.removeEventListener("click", unlockAudio);
+  }
+
+  document.body.addEventListener("touchend", unlockAudio);
+  document.body.addEventListener("click", unlockAudio);
+
+  // Marker events
+  marker.addEventListener('markerFound', () => {
+    console.log('Marker found - starting audio');
+    avatar.components.sound.playSound();
+  });
+
+  marker.addEventListener('markerLost', () => {
+    console.log('Marker lost - pausing audio');
+    avatar.components.sound.pauseSound();
+  });
     </script>
   </body>
 </html>
