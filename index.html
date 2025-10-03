@@ -5,6 +5,14 @@
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@v7.6.0/dist/aframe-extras.min.js"></script>
   <body style="margin : 0px; overflow: hidden;">
+    <!-- Start Overlay - BEFORE a-scene -->
+    <div id="startOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; color: white; font-family: Arial, sans-serif;">
+      <div style="text-align: center; padding: 20px;">
+        <p style="font-size: 24px; margin-bottom: 20px;">Tap to Start!</p>
+        <button id="startButton" style="padding: 20px 40px; font-size: 18px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">Start</button>
+      </div>
+    </div>
+
     <a-scene embedded arjs>
       <a-assets>
         <!-- <a-asset-item id="myModel" src="./path/to/your/model.glb"></a-asset-item> -->
@@ -23,28 +31,40 @@
       <a-entity camera></a-entity>
     </a-scene>
     <script>
-      // Audio control when marker is detected/lost
+      document.getElementById('startButton').addEventListener('click', function() {
+      // Initialize audio context for iOS
+      const audio = document.querySelector('#avatarAudio');
+      if (audio) {
+        audio.play().then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+        }).catch(e => console.log('Audio init:', e));
+      }
+      
+      // Hide overlay
+      document.getElementById('startOverlay').style.display = 'none';
+    });
+
+    // Wait for scene to load
+    const scene = document.querySelector('a-scene');
+    scene.addEventListener('loaded', function() {
       const marker = document.querySelector('a-marker');
       const avatar = document.querySelector('#avatar');
-      let hasPlayedAudio = false;
-      
+
       marker.addEventListener('markerFound', function() {
-        console.log('Marker found - starting audio');
-      if (!hasPlayedAudio) {
-        const avatar = document.querySelector('#avatar');
+        console.log('Marker found - playing audio');
         if (avatar && avatar.components.sound) {
           avatar.components.sound.playSound();
-          hasPlayedAudio = true;
         }
-      }
       });
-      
+
       marker.addEventListener('markerLost', function() {
-    console.log('Marker lost - pausing audio');
-    if (avatar && avatar.components.sound) {
-      avatar.components.sound.pauseSound();
-    }
-  });
+        console.log('Marker lost - pausing audio');
+        if (avatar && avatar.components.sound) {
+          avatar.components.sound.pauseSound();
+        }
+      });
+    });      
     </script>
   </body>
 </html>
