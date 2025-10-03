@@ -79,11 +79,22 @@
   </div>
 
   <!-- AR Scene -->
-  <a-scene embedded arjs id="arScene">
+  <a-scene 
+    embedded 
+    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; patternRatio: 0.75;"
+    vr-mode-ui="enabled: false"
+    id="arScene">
     <a-assets>
       <audio id="avatarAudio" src="audio/diologues_w_emotions.mp3" preload="auto"></audio>
     </a-assets>
-    <a-marker type="pattern" url="data/pattern-link_qr.patt" emitevents="true">
+    <a-marker 
+      type="pattern" 
+      url="data/pattern-link_qr.patt" 
+      emitevents="true"
+      smooth="true"
+      smoothCount="5"
+      smoothTolerance="0.01"
+      smoothThreshold="2">
       <a-entity
         id="avatar"
         position="0 0 0"
@@ -101,18 +112,15 @@
     document.getElementById('startButton').addEventListener('click', function() {
       console.log('Start button clicked');
       
-      // Initialize audio for iOS
+      // Play audio immediately on click for iOS compatibility
       const audio = document.querySelector('#avatarAudio');
       console.log('Audio element found:', audio);
       
       if (audio) {
-        // Play and immediately pause to unlock audio on iOS
         audio.play().then(() => {
-          console.log('Audio initialization successful');
-          audio.pause();
-          audio.currentTime = 0;
+          console.log('Audio started playing on button click');
         }).catch(e => {
-          console.log('Audio initialization error:', e);
+          console.log('Audio play error:', e);
         });
       }
       
@@ -148,13 +156,13 @@
 
       // Play audio when marker is found
       marker.addEventListener('markerFound', function() {
-        console.log('Marker found - attempting to play audio');
+        console.log('Marker found - avatar visible');
         
-        if (avatar.components && avatar.components.sound) {
-          avatar.components.sound.playSound();
-          console.log('Audio play command sent');
-        } else {
-          console.error('Sound component not found on avatar');
+        // Audio should already be playing from button click
+        // Just ensure it's playing if it somehow stopped
+        const audio = document.querySelector('#avatarAudio');
+        if (audio && audio.paused) {
+          audio.play().catch(e => console.log('Resume audio error:', e));
         }
       });
 
@@ -162,9 +170,9 @@
       marker.addEventListener('markerLost', function() {
         console.log('Marker lost - pausing audio');
         
-        if (avatar.components && avatar.components.sound) {
-          avatar.components.sound.pauseSound();
-          console.log('Audio pause command sent');
+        const audio = document.querySelector('#avatarAudio');
+        if (audio) {
+          audio.pause();
         }
       });
       
